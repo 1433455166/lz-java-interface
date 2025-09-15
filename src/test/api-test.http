@@ -1,0 +1,19 @@
+### 获取欢迎信息
+GET http://localhost:8080/api/hello
+Accept: application/json
+
+---
+
+### 获取带名字的欢迎信息
+GET http://localhost:8080/api/hello/张三
+Accept: application/json
+
+---
+
+### 创建一个对象（POST 请求）
+POST http://localhost:8080/api/hello
+Content-Type: application/json
+
+{
+  "name": "李四"
+}
