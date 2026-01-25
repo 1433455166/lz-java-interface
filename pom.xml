@@ -47,6 +47,9 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.example.lz_java_test.JavaTestApplication</mainClass>
+                </configuration>
 			</plugin>
 		</plugins>
 	</build>
