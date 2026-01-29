@@ -1,10 +1,13 @@
 package com.example.lz_java_test.controller;
 
+import com.example.lz_java_test.dto.ThreeBodyRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -114,6 +117,82 @@ public class JsonFileController {
             response.put("message", "读取数据失败: " + e.getMessage());
             response.put("timestamp", System.currentTimeMillis());
             
+            return response;
+        }
+    }
+
+    /**
+     *  读取 三体小说 第一部 数据
+     */
+    @PostMapping("/threeBody")
+    public Map<String, Object> threeBody(
+            @RequestBody ThreeBodyRequest request
+    ) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        Integer part = request.getPart();
+        if (part == null) {
+            response.put("success", false);
+            response.put("code", 400);
+            response.put("message", "part 不能为空");
+            return response;
+        }
+
+        Map<Integer, String> fileMap = Map.of(
+                1, "threeBody1.json",
+                2, "threeBody2.json",
+                3, "threeBody3.json"
+        );
+
+        String fileName = fileMap.get(part);
+        if (fileName == null) {
+            response.put("success", false);
+            response.put("code", 400);
+            response.put("message", "非法 part 参数");
+            return response;
+        }
+
+        String path = "data/threeBody/" + fileName;
+
+        try {
+            ClassPathResource resource = new ClassPathResource(path);
+            System.out.println("文件是否存在: " + resource.exists());
+            
+            if (!resource.exists()) {
+                System.err.println("文件不存在: data/threeBody/threeBody1.json");
+                
+                // 返回标准错误格式
+                response.put("success", false);
+                response.put("code", 404);
+                response.put("message", "文件不存在");
+                response.put("timestamp", System.currentTimeMillis());
+                return response;
+            }
+
+            try (InputStream inputStream = resource.getInputStream()) {
+
+                Map<String, Object> data = objectMapper.readValue(
+                    inputStream, 
+                    new TypeReference<Map<String, Object>>() {}
+                );
+                
+                response.put("message", "数据获取成功");
+                response.put("data", data);
+                // 这里先简单返回文件名，方便你测试
+                response.put("success", true);
+                response.put("code", 200);
+                response.put("file", fileName);
+                response.put("time", LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+                return response;
+            }
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("code", 500);
+            response.put("message", "读取失败：" + e.getMessage());
             return response;
         }
     }
