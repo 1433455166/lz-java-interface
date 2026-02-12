@@ -1,5 +1,6 @@
 package com.example.lz_java_test.controller;
 
+import com.example.lz_java_test.dto.NovelRequest;
 import com.example.lz_java_test.dto.ThreeBodyRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -122,7 +123,7 @@ public class JsonFileController {
     }
 
     /**
-     *  读取 三体小说 第一部 数据
+     *  读取 三体小说 数据
      */
     @PostMapping("/threeBody")
     public Map<String, Object> threeBody(
@@ -160,7 +161,7 @@ public class JsonFileController {
             System.out.println("文件是否存在: " + resource.exists());
             
             if (!resource.exists()) {
-                System.err.println("文件不存在: data/threeBody/threeBody1.json");
+                System.err.println("文件不存在: " + path);
                 
                 // 返回标准错误格式
                 response.put("success", false);
@@ -183,6 +184,77 @@ public class JsonFileController {
                 response.put("success", true);
                 response.put("code", 200);
                 response.put("file", fileName);
+                response.put("time", LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+
+                return response;
+            }
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("code", 500);
+            response.put("message", "读取失败：" + e.getMessage());
+            return response;
+        }
+    }
+
+    /**
+     *  读取 小说 数据
+     */
+    @PostMapping("/getNovelData")
+    public Map<String, Object> getNovelData(
+            @RequestBody NovelRequest request
+    ) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        String novelName = request.getNovelName(); // 小说名
+        String folderName = request.getFolderName(); // 文件夹名
+
+        // System.out.println("novelName: " + novelName);
+        // System.out.println("folderName: " + folderName);
+
+        if (novelName == null) {
+            response.put("success", false);
+            response.put("code", 400);
+            response.put("message", "novelName 不能为空");
+            return response;
+        }
+
+        String folderPath = folderName != null
+            ? "data/" + folderName + '/'
+            : "data/";
+
+        String path = folderPath + novelName + ".json";
+
+        try {
+            ClassPathResource resource = new ClassPathResource(path);
+            // System.out.println("文件是否存在: " + resource.exists());
+            
+            if (!resource.exists()) {
+                System.err.println("文件不存在: " + path);
+                
+                // 返回标准错误格式
+                response.put("success", false);
+                response.put("code", 404);
+                response.put("message", "文件不存在");
+                response.put("timestamp", System.currentTimeMillis());
+                return response;
+            }
+
+            try (InputStream inputStream = resource.getInputStream()) {
+
+                Map<String, Object> data = objectMapper.readValue(
+                    inputStream, 
+                    new TypeReference<Map<String, Object>>() {}
+                );
+                
+                response.put("message", "数据获取成功");
+                response.put("data", data);
+                // 这里先简单返回文件名，方便你测试
+                response.put("success", true);
+                response.put("code", 200);
+                response.put("file", novelName);
                 response.put("time", LocalDateTime.now()
                         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 

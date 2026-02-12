@@ -1,5 +1,11 @@
 # lz-java-interface
 
+## 重新编译
+mvn clean compile
+
+## 启动
+mvn spring-boot:run
+
 ## 获取本机IP地址  连接 Wi-Fi 时
 ipconfig getifaddr en0
 
