@@ -6,10 +6,13 @@ mvn clean compile
 ## 启动
 mvn spring-boot:run
 
+## 打包项目（生成普通JAR）
+mvn package
+
 ## 获取本机IP地址  连接 Wi-Fi 时
 ipconfig getifaddr en0
 
-## 目录
+# 目录
 src
 └── main
     ├── java

@@ -221,9 +221,10 @@ public class JsonFileController {
             return response;
         }
 
-        String folderPath = folderName != null
-            ? "data/" + folderName + '/'
-            : "data/";
+        String folderPath =
+            (folderName == null || folderName.isBlank())
+            ? "data/"
+            : "data/" + folderName + '/';
 
         String path = folderPath + novelName + ".json";
 
