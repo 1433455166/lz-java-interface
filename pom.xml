@@ -51,6 +51,13 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		
+		<!-- 添加H2数据库依赖用于测试 -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -58,9 +65,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.example.lz_java_test.JavaTestApplication</mainClass>
-                </configuration>
 			</plugin>
 		</plugins>
 	</build>
