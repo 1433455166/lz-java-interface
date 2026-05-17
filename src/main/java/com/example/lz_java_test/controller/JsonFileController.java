@@ -12,14 +12,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/lz-api")
@@ -27,6 +33,19 @@ public class JsonFileController {
 
     @Autowired
     private ObjectMapper objectMapper; // Spring Boot 自动配置的 Jackson ObjectMapper
+
+    @GetMapping("/test")
+    public Map<String, Object> getTest() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "success");
+        response.put("message", "服务已成功启动并正常运行");
+        response.put("service", "lz-java-test-api");
+        response.put("version", "1.0.0");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("time", java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        return response;
+    }
 
     /**
      * 方法一：直接读取 JSON 文件并返回字符串（最简单）
@@ -629,6 +648,211 @@ public class JsonFileController {
             response.put("timestamp", System.currentTimeMillis());
             
             return response;
+        }
+    }
+
+    /**
+     *  每日弹窗 数据 V2版本 - 返回优化后的数据格式，支持随机选择和每日只显示一次
+     */
+    @GetMapping("/pop.daily.v2")
+    public Map<String, Object> popDailyV2(HttpServletRequest request, HttpServletResponse response) {
+        Map<String, Object> responseData = new HashMap<>();
+        
+        try {
+            ClassPathResource resource = new ClassPathResource("data/daily.json");
+            
+            if (!resource.exists()) {
+                System.err.println("文件不存在: data/daily.json");
+                
+                responseData.put("success", false);
+                responseData.put("code", 404);
+                responseData.put("message", "文件不存在");
+                responseData.put("time", LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                return responseData;
+            }
+            
+            // 获取当前日期（用于cookie标识）
+            String currentDate = LocalDate.now().toString();
+            String cookieName = "daily_popup_shown_" + currentDate;
+            
+            // 检查cookie是否存在，判断今天是否已经显示过
+            boolean hasShownToday = false;
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if (cookieName.equals(cookie.getName())) {
+                        hasShownToday = true;
+                        break;
+                    }
+                }
+            }
+            
+            // 如果已经显示过，仍然返回完整数据（便于验证随机能力）
+            if (hasShownToday) {
+                // 读取数据文件以返回完整数据
+                try (InputStream inputStream = resource.getInputStream()) {
+                    Map<String, Object> originalData = objectMapper.readValue(
+                        inputStream, 
+                        new TypeReference<Map<String, Object>>() {}
+                    );
+                    
+                    // 获取列表并随机选择一个（即使已经显示过，也重新随机选择用于验证）
+                    Object listObj = originalData.get("list");
+                    Map<String, Object> selectedData = null;
+                    if (listObj instanceof java.util.List) {
+                        java.util.List<?> list = (java.util.List<?>) listObj;
+                        if (!list.isEmpty()) {
+                            Random random = new Random();
+                            int randomIndex = random.nextInt(list.size());
+                            if (list.get(randomIndex) instanceof Map) {
+                                selectedData = (Map<String, Object>) list.get(randomIndex);
+                            }
+                        }
+                    }
+                    
+                    // 构建dailyData
+                    Map<String, Object> dailyData = new HashMap<>();
+                    if (selectedData != null) {
+                        dailyData.put("title", selectedData.get("title"));
+                        dailyData.put("type", selectedData.get("type"));
+                        
+                        // 处理style对象
+                        Object styleObj = selectedData.get("style");
+                        if (styleObj instanceof Map) {
+                            dailyData.put("style", styleObj);
+                        } else {
+                            // 默认样式
+                            Map<String, Object> defaultStyle = new HashMap<>();
+                            defaultStyle.put("fontSize", 24);
+                            defaultStyle.put("lineHeight", 1.6);
+                            dailyData.put("style", defaultStyle);
+                        }
+                        
+                        // 处理data数组
+                        Object dataObj = selectedData.get("data");
+                        if (dataObj instanceof java.util.List) {
+                            dailyData.put("data", dataObj);
+                        } else {
+                            dailyData.put("data", Arrays.asList("", ""));
+                        }
+                    } else {
+                        // 默认数据
+                        dailyData.put("title", "每日一言");
+                        dailyData.put("type", "default");
+                        Map<String, Object> defaultStyle = new HashMap<>();
+                        defaultStyle.put("fontSize", 24);
+                        defaultStyle.put("lineHeight", 1.6);
+                        dailyData.put("style", defaultStyle);
+                        dailyData.put("data", Arrays.asList("", ""));
+                    }
+                    
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("type", "daily");
+                    data.put("hasShownToday", true);
+                    // data.put("dailyData", dailyData);
+                    data.put("dailyData", null);
+                    
+                    responseData.put("success", true);
+                    responseData.put("code", 200);
+                    responseData.put("message", "今日弹窗已显示过");
+                    responseData.put("data", data);
+                    responseData.put("time", LocalDateTime.now()
+                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    return responseData;
+                }
+            }
+            
+            // 第一次调用，读取数据文件
+            try (InputStream inputStream = resource.getInputStream()) {
+                Map<String, Object> originalData = objectMapper.readValue(
+                    inputStream, 
+                    new TypeReference<Map<String, Object>>() {}
+                );
+                
+                // 获取列表并随机选择一个
+                Object listObj = originalData.get("list");
+                Map<String, Object> selectedData = null;
+                if (listObj instanceof java.util.List) {
+                    java.util.List<?> list = (java.util.List<?>) listObj;
+                    if (!list.isEmpty()) {
+                        Random random = new Random();
+                        int randomIndex = random.nextInt(list.size());
+                        if (list.get(randomIndex) instanceof Map) {
+                            selectedData = (Map<String, Object>) list.get(randomIndex);
+                        }
+                    }
+                }
+                
+                // 构建dailyData
+                Map<String, Object> dailyData = new HashMap<>();
+                if (selectedData != null) {
+                    dailyData.put("title", selectedData.get("title"));
+                    dailyData.put("type", selectedData.get("type"));
+                    
+                    // 处理style对象
+                    Object styleObj = selectedData.get("style");
+                    if (styleObj instanceof Map) {
+                        dailyData.put("style", styleObj);
+                    } else {
+                        // 默认样式
+                        Map<String, Object> defaultStyle = new HashMap<>();
+                        defaultStyle.put("fontSize", 24);
+                        defaultStyle.put("lineHeight", 1.6);
+                        dailyData.put("style", defaultStyle);
+                    }
+                    
+                    // 处理data数组
+                    Object dataObj = selectedData.get("data");
+                    if (dataObj instanceof java.util.List) {
+                        dailyData.put("data", dataObj);
+                    } else {
+                        dailyData.put("data", Arrays.asList("", ""));
+                    }
+                } else {
+                    // 默认数据
+                    dailyData.put("title", "每日一言");
+                    dailyData.put("type", "default");
+                    Map<String, Object> defaultStyle = new HashMap<>();
+                    defaultStyle.put("fontSize", 24);
+                    defaultStyle.put("lineHeight", 1.6);
+                    dailyData.put("style", defaultStyle);
+                    dailyData.put("data", Arrays.asList("", ""));
+                }
+                
+                // 设置cookie，标记今天已经显示过
+                Cookie shownCookie = new Cookie(cookieName, "true");
+                shownCookie.setMaxAge(24 * 60 * 60); // 24小时有效期
+                shownCookie.setPath("/"); // 对所有路径有效
+                response.addCookie(shownCookie);
+                
+                // 构建响应数据
+                Map<String, Object> data = new HashMap<>();
+                data.put("type", "daily");
+                data.put("hasShownToday", false); // 第一次调用时为false
+                data.put("dailyData", dailyData);
+                
+                responseData.put("success", true);
+                responseData.put("code", 200);
+                responseData.put("message", "数据获取成功");
+                responseData.put("data", data);
+                responseData.put("time", LocalDateTime.now()
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                
+                return responseData;
+            }
+            
+        } catch (IOException e) {
+            System.err.println("读取 JSON 失败: " + e.getMessage());
+            e.printStackTrace();
+            
+            responseData.put("success", false);
+            responseData.put("code", 500);
+            responseData.put("message", "读取数据失败: " + e.getMessage());
+            responseData.put("time", LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            
+            return responseData;
         }
     }
 
