@@ -40,6 +40,11 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
 		
 		<!-- 添加数据库相关依赖 (已注释以解决连接问题) -->
 		<!-- <dependency>
